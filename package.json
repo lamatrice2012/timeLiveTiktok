@@ -1,11 +1,15 @@
 {
   "name": "tiktok-live-proxy",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "TikTok Live Status Proxy - Détection live stable via WebcastPushConnection",
   "main": "proxy.js",
   "scripts": {
     "start": "node proxy.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^0.9.3"
   }
 }
