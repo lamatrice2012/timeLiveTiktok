@@ -29,51 +29,62 @@ function getOrCreateConnection(username) {
     roomStatus: null,
     lastChecked: null,
     error: null,
+    lastEventTime: Date.now(), // Track dernière activité
+    timeout: null, // Timeout pour détecter fin de live
   };
   
   tiktokConnections.set(username, state);
   
+  // Fonction pour reset le timeout (si une activité = live encore actif)
+  function resetActivityTimeout() {
+    state.lastEventTime = Date.now();
+    if (state.timeout) clearTimeout(state.timeout);
+    
+    // Si aucune activité pendant 120s = fin de live
+    state.timeout = setTimeout(() => {
+      if (state.isLive) {
+        console.log(`⚠️ [@${username}] Aucune activité depuis 120s → fin de live détectée`);
+        state.isLive = false;
+        state.roomStatus = null;
+      }
+    }, 120000); // 120 secondes
+  }
+  
   // Connexion
   state.connection.connect()
     .then(async () => {
-      console.log(`✅ TikTok connecté: @${username}`);
+      // ✅ DÈS QUE CONNECT() RÉUSSIT = ON EST EN LIVE
+      state.isLive = true;
+      state.roomStatus = 'connected';
       state.error = null;
+      console.log(`🔴 [@${username}] LIVE DÉTECTÉ (connexion établie)`);
       
-      // Événement: live room info
+      // Événement: live room info (viewers, etc)
       state.connection.on('roomUser', data => {
         state.viewerCount = data.viewerCount || 0;
-        state.roomStatus = 'connected';
+        resetActivityTimeout();
         console.log(`👥 [@${username}] Viewers: ${state.viewerCount}`);
       });
       
-      // Événement: title/room update
+      // Garder un ping pour vérifier que la connexion est toujours active
       state.connection.on('like', data => {
-        // On reçoit des events = la personne est EN LIVE
-        if (!state.isLive) {
-          state.isLive = true;
-          console.log(`🔴 [@${username}] LIVE DÉTECTÉ`);
-        }
+        resetActivityTimeout();
+        console.log(`❤️ [@${username}] ${data.uniqueId} envoie ${data.likeCount} tapes`);
       });
       
       state.connection.on('gift', data => {
-        if (!state.isLive) {
-          state.isLive = true;
-          console.log(`🔴 [@${username}] LIVE DÉTECTÉ (gift)`);
-        }
+        resetActivityTimeout();
+        console.log(`🎁 [@${username}] ${data.uniqueId} envoie ${data.giftName}`);
       });
       
       state.connection.on('chat', data => {
-        if (!state.isLive) {
-          state.isLive = true;
-          console.log(`🔴 [@${username}] LIVE DÉTECTÉ (chat)`);
-        }
+        resetActivityTimeout();
+        console.log(`💬 [@${username}] ${data.uniqueId}: ${data.comment}`);
       });
       
       state.connection.on('follow', data => {
-        if (!state.isLive) {
-          state.isLive = true;
-          console.log(`🔴 [@${username}] LIVE DÉTECTÉ (follow)`);
-        }
+        resetActivityTimeout();
+        console.log(`❤️ [@${username}] ${data.uniqueId} follow !`);
       });
       
     })
@@ -81,6 +92,7 @@ function getOrCreateConnection(username) {
       // Utilisateur hors ligne ou erreur
       state.isLive = false;
       state.error = err.message || 'Utilisateur hors ligne';
+      if (state.timeout) clearTimeout(state.timeout);
       console.log(`⏳ [@${username}] ${state.error}`);
       
       // Retry dans 30s
@@ -96,6 +108,7 @@ function getOrCreateConnection(username) {
     console.log(`⚠️ [@${username}] Déconnecté, retry dans 10s...`);
     state.isLive = false;
     state.roomStatus = null;
+    if (state.timeout) clearTimeout(state.timeout);
     
     setTimeout(() => {
       tiktokConnections.delete(username);
