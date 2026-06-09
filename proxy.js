@@ -192,8 +192,8 @@ const server = http.createServer(async (req, res) => {
   res.end('Not found');
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 Proxy TikTok démarré sur port ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Proxy TikTok démarré sur port ${PORT} (0.0.0.0)`);
   console.log(`   GET /status?user=USERNAME`);
   console.log(`   GET /health`);
   console.log(`   Utilise tiktok-live-connector (stable) au lieu du scraping HTTP`);
