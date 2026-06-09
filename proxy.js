@@ -57,6 +57,7 @@ function getOrCreateConnection(username) {
       state.isLive = true;
       state.roomStatus = 'connected';
       state.error = null;
+      resetActivityTimeout(); // Start timeout tracking
       console.log(`🔴 [@${username}] LIVE DÉTECTÉ (connexion établie)`);
       
       // Événement: live room info (viewers, etc)
